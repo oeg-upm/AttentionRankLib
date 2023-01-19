@@ -1,33 +1,45 @@
+##IMPORTS
+
+#### STEP 1-4 ####
 from transformers import BertTokenizer, TFBertModel
-import numpy
 import re
 import glob
+import json
+import sys
+import bpe_utils
+import utils
+import tensorflow as tf
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-model = TFBertModel.from_pretrained("bert-base-uncased")
-
-with open('../AttentionRank-main/SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
-    text = file.read().replace('\n', '')
-
-encoded_input = tokenizer(text, return_tensors='tf')
-output = model(encoded_input, output_attentions=True)
-attentions = output.attentions
-#print(attentions)
-array_map =[]
-for map in attentions:
-  array_map.append(map)
-array_map = numpy.array(array_map)
-array_map = array_map[:,0, :, :, :]
-
-##########
-
+#### STEP 5 ####
 import csv
 import os
 import time
 import numpy as np
 import pickle
 
+#### STEP 6 ####
+from bert import tokenization
+from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
+from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
+from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
+import spacy
+import spacy.cli
 
+#### STEP 8 ####
+from bert_embedding import BertEmbedding
+import mxnet as mx
+
+#### STEP 10 ####
+import torch
+from torch import nn
+from string import punctuation
+import nltk
+from nltk.corpus import stopwords
+from tqdm import tqdm
+
+#### AUXILIAR FUNCTIONS ####
+
+#### STEP 5 ####
 def load_pickle(fname):
     with open(fname, "rb") as f:
         return pickle.load(f, encoding="latin1")  # add, encoding="latin1") if using python3 and downloaded data
@@ -123,14 +135,178 @@ def map_attn(example, heads, sentence_length, layer_weight, record):
 
             return current_dict
 
+#### STEP 10 ####
+def cosine_similarity(x, y, norm=False):
+    assert len(x) == len(y), "len(x) != len(y)"
+    res = np.array([[x[i] * y[i], x[i] * x[i], y[i] * y[i]] for i in range(len(x))])
+    cos = sum(res[:, 0]) / (np.sqrt(sum(res[:, 1])) * np.sqrt(sum(res[:, 2])))
+    return 0.5 * cos + 0.5 if norm else cos  # [0, 1]
 
-# main
+
+def self_attn_matrix(embedding_set):
+    ls = np.shape(embedding_set)[0]
+    Q = torch.tensor(embedding_set)
+    K = torch.tensor(embedding_set)
+    V = torch.tensor(embedding_set)
+    attn = torch.matmul(Q, K.transpose(-1,-2))
+    attn = nn.Softmax(dim=1)(attn)
+    V = torch.matmul(attn, V)
+    V = torch.sum(V, dim=0)
+    V = V/ls
+    return V
+
+def cross_attn_matrix(D,Q):
+    D = torch.tensor(D)
+    Q = torch.tensor(Q)
+    attn = torch.matmul(D, Q.transpose(-1,-2))
+    S_d2q = nn.Softmax(dim=1)(attn)  # S_d2q : softmax the row; shape[len(doc), len(query)]
+    S_q2d = nn.Softmax(dim=0)(attn)  # S_q2d : softmax the col; shape[len(doc), len(query)]
+    A_d2q = torch.matmul(S_d2q, Q)
+    A_q2d = torch.matmul(S_d2q, torch.matmul(S_q2d.transpose(-1,-2), D))
+    V = (D+A_d2q+torch.mul(D, A_d2q)+torch.mul(D, A_q2d))
+    V = V/4
+    return V
+
+def f1(a, b):
+    return a*b*2/(a+b)
+
+
+def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
+    list_f1 = []
+    list_p = []
+    list_r = []
+    for r in range(len(actual)):
+        y_actual = actual[r]
+        y_predicted = predicted[r][:best]
+        y_score = 0
+        for p, prediction in enumerate(y_predicted):
+            if prediction in y_actual and prediction not in y_predicted[:p]:
+                y_score += 1
+        if not y_predicted:
+            y_p = 0
+            y_r = 0
+        else:
+            y_p = y_score / len(y_predicted)
+            y_r = y_score / len(y_actual)
+        if y_p != 0 and y_r != 0:
+            y_f1 = 2 * (y_p * y_r / (y_p + y_r))
+        else:
+            y_f1 = 0
+        list_f1.append(y_f1)
+        list_p.append(y_p)
+        list_r.append(y_r)
+    if pr_plot:
+        return list_f1, list_p, list_r
+    else:
+        return np.mean(list_f1), np.mean(list_p), np.mean(list_r)
+
+#### STEP 11 ####
+def f1(a, b):
+    return a*b*2/(a+b)
+
+
+def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
+    list_f1 = []
+    list_p = []
+    list_r = []
+    for r in range(len(actual)):
+        y_actual = actual[r]
+        y_predicted = predicted[r][:best]
+        y_score = 0
+        for p, prediction in enumerate(y_predicted):
+            if prediction in y_actual and prediction not in y_predicted[:p]:
+                y_score += 1
+        if not y_predicted:
+            y_p = 0
+            y_r = 0
+        else:
+            y_p = y_score / len(y_predicted)
+            y_r = y_score / len(y_actual)
+        if y_p != 0 and y_r != 0:
+            y_f1 = 2 * (y_p * y_r / (y_p + y_r))
+        else:
+            y_f1 = 0
+        list_f1.append(y_f1)
+        list_p.append(y_p)
+        list_r.append(y_r)
+    if pr_plot:
+        return list_f1, list_p, list_r
+    else:
+        return np.mean(list_f1), np.mean(list_p), np.mean(list_r)
+
+#### MAIN ####
+
+#### STEP 1-4 ####
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+model = TFBertModel.from_pretrained("bert-base-uncased")
+
+with open('./SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
+    text = file.read().replace('\n', '')
+
+encoded_input = tokenizer(text, return_tensors='tf')
+output = model(encoded_input, output_attentions=True)
+attentions = output.attentions
+#print(attentions)
+array_map =[]
+for map in attentions:
+  array_map.append(map)
+array_map = numpy.array(array_map)
+array_map = array_map[:,0, :, :, :]
+
+with open('./AttentionRank-main/SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
+    text = file.read().replace('\n', '')
+delimiter = "."
+text= [x+delimiter for x in text.split(delimiter) if x]
+tokens = []
+for line in text:
+  if not line == "":
+    result = tokenizer(line)
+    input_ids = result['input_ids']
+    tokens = tokens + tokenizer.convert_ids_to_tokens(input_ids)
+    #print(tokenizer.convert_ids_to_tokens(input_ids))
+#print(tokens)
+
+# Data to be written
+dictionary = {
+    'tokens' : tokens,
+    'attns' : array_map,
+}
+
+feature_dicts_with_attn = [dictionary]
+
+dataset = 'SemEval2017'
+# text_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_docsutf8/'
+output_path = './AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+save_path = output_path + 'sentence_paired_text/'
+
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+    
+print(feature_dicts_with_attn)
+pickle.dump(feature_dicts_with_attn, open( save_path + 'S0010938X1500195X_orgbert_attn.pkl', 'wb'))
+
+#utils.write_pickle(feature_dicts_with_attn, "/content/ejemplo.pkl")
+
+with open(save_path + "S0010938X1500195X_sentence_paired.txt", "w") as outfile:
+  outfile.write(str(feature_dicts_with_attn))
+# Serializing json
+dictionary = {
+    'tokens' : tokens,
+}
+json_object = json.dumps([dictionary])
+
+#print(json_object)
+# Writing to sample.json
+with open(save_path + "S0010938X1500195X_orgbert_attn.json", "w") as outfile:
+  outfile.write(json_object)
+
+#### STEP 5 ####
 start_time = time.time()
 
 dataset = 'SemEval2017'
-text_path = '../AttentionRank-main/' + dataset + '/processed_docsutf8/'
+text_path = './' + dataset + '/processed_docsutf8/'
 print(text_path)
-output_path = '../AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 
 files = glob.glob(os.path.join(text_path, '*'))
 for i, file in enumerate(files):
@@ -174,17 +350,7 @@ for n, file in enumerate(files):
     run_time = time.time()
     print(n + 1, "th file", file, "running time", run_time - start_time)
 
-
-import json
-import os
-import sys
-sys.path.append(os.path.abspath("/content/drive/MyDrive/AttentionRank-main"))
-import bpe_utils
-import utils
-import pickle
-import tensorflow as tf
-
-with open('/content/drive/MyDrive/AttentionRank-main/SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
+with open('./SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
     text = file.read().replace('\n', '')
 delimiter = "."
 text= [x+delimiter for x in text.split(delimiter) if x]
@@ -207,7 +373,7 @@ feature_dicts_with_attn = [dictionary]
 
 dataset = 'SemEval2017'
 # text_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 save_path = output_path + 'sentence_paired_text/'
 
 if not os.path.exists(save_path):
@@ -231,118 +397,14 @@ json_object = json.dumps([dictionary])
 with open(save_path + "S0010938X1500195X_orgbert_attn.json", "w") as outfile:
   outfile.write(json_object)
 
-###### PASO 5 ######
+#### STEP 6 ####
 
-import csv
-import os
-import time
-import numpy as np
-import pickle
-
-
-def load_pickle(fname):
-    with open(fname, "rb") as f:
-        return pickle.load(f, encoding="latin1")  # add, encoding="latin1") if using python3 and downloaded data
-
-
-def weights_comb(input_weights, strategy=3):
-    if strategy == 1:
-        comb_weight = np.array(input_weights).mean()
-    elif strategy == 2:
-        comb_weight = np.array(input_weights).max()
-    elif strategy == 3:
-        comb_weight = np.array(input_weights).sum()
-    else:
-        comb_weight = np.array(input_weights).prod() / np.array(input_weights).sum()
-    return comb_weight
-
-
-def data_iterator():
-    for i, doc in enumerate(data):
-        # if i % 100 == 0 or i == len(data) - 1:
-        # print("{:.1f}% done".format(100.0 * (i + 1) / len(data)))
-        yield doc["tokens"], np.array(doc["attns"])
-
-
-def get_data_points(head_data):
-    xs, ys, avgs = [], [], []
-    for layer in range(12):
-        for head in range(12):
-            ys.append(head_data[layer, head])
-            xs.append(1 + layer)
-        avgs.append(head_data[layer].mean())
-    return xs, ys, avgs
-
-
-def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        pass
-
-    try:
-        import unicodedata
-        unicodedata.numeric(s)
-        return True
-    except (TypeError, ValueError):
-        pass
-
-    return False
-
-
-def merge_dict(x, y):
-    for k, v in x.items():
-        if k in y.keys():
-            y[k] = y[k] + v
-        else:
-            y[k] = v
-
-
-def map_attn(example, heads, sentence_length, layer_weight, record):
-    counter_12 = 0  # check head index
-
-    current_sum_attn = []
-    for ei, (layer, head) in enumerate(heads):
-        attn = example["attns"][layer][head]  # [0:sentence_length, 0:sentence_length]
-        attn = np.array(attn)
-        attn /= attn.sum(axis=-1, keepdims=True)  # norm each row
-        attn_sum = attn.sum(axis=0, keepdims=True)  # add up 12 heads # np.shape(attn_sum) = (1,sentence length)
-        words = example["tokens"]  # [0:sentence_length]
-        weights_list = attn_sum[0]
-
-        single_word_dict = {}
-        for p in range(len(words)):
-            hashtag_lead = words[p]
-            hash_weights = [weights_list[p]]
-            weight_new = weights_comb(hash_weights, 3) * layer_weight
-            single_word_dict[hashtag_lead + "_" + str(p)] = weight_new  # p is the word position in sentence
-
-        current_sum_attn.append(np.array(list(single_word_dict.values())))  # dict.values() keep the entries order
-        # shape(current_sum_attn) = (12, words number), each item in it is a list of words attn in current sentence
-        counter_12 += 1  # check head index
-
-        if counter_12 % 12 == 0:  # if head number get 12, sum all 12 heads attn and output
-            head = np.sum(current_sum_attn, axis=0)  # dict zip can read array, do not need to list it
-            # double check
-            # print(sum([item[0] for item in current_sum_attn]))
-            # print(head[0])
-            longer_key_list = []
-            current_key_list = list(single_word_dict.keys())  # [words_positions] # dict.keys() keep the entries order
-            for each_key in current_key_list:
-                longer_key_list.append(each_key + "_" + str(record))  # word_positionInSentence_sentenceNumber
-            current_dict = dict(zip(longer_key_list, head))  # head = word_p_s attn, heads are already summed here
-
-            return current_dict
-
-
-# main
 start_time = time.time()
 
 dataset = 'SemEval2017'
-text_path = '../AttentionRank-main/' + dataset + '/processed_docsutf8/'
+text_path = './' + dataset + '/processed_docsutf8/'
 print(text_path)
-output_path = '../AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 
 files = glob.glob(os.path.join(text_path, '*'))
 for i, file in enumerate(files):
@@ -385,29 +447,18 @@ for n, file in enumerate(files):
     run_time = time.time()
     print(n + 1, "th file", file, "running time", run_time - start_time)
 
-###### PASO 6 #####
+#### STEP 6 ####
 
-import sys
-sys.path.append(os.path.abspath("../AttentionRank-main"))
-from bert import tokenization
-from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
-from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
-from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
-
-import spacy
-import csv
-
-with open('../AttentionRank-main/SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
+with open('./SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
     text = file.read().replace('\n', '')
 
 dataset = 'SemEval2017'
-text_path = '../AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '../AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+text_path = './' + dataset + '/processed_docsutf8/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 save_path = output_path + 'candidate_tokenizing/'
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-import spacy.cli
 spacy.cli.download("en_core_web_sm")
 
 nlp = spacy.load("en_core_web_sm")
@@ -417,7 +468,7 @@ tagged = []
 for token in doc:
     tagged.append((str(token), token.tag_))
 tagged = [tagged]
-print(tagged)
+#print(tagged)
 text_obj = InputTextObj(tagged, 'en')
 candidates = extract_candidates(text_obj)
 #print(candidates)
@@ -476,19 +527,14 @@ w1 = csv.writer(open(save_path + file + '_candidate_df.csv', "a"))
 for k, v in sorted(df_dict.items(), key=lambda item:item[1], reverse=True):
   w1.writerow([k, v])
 
-###### PASO 7 #####
-
-import os
-import time
-import csv
-
+#### STEP 7 ####
 
 """pair candidates and their accumulated self-attention"""
 
 
 dataset = 'SemEval2017'
-doc_path = '../AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '../AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+doc_path = './' + dataset + '/processed_docsutf8/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 candidate_token_path = output_path + 'candidate_tokenizing/'
 token_attn_path = output_path + 'token_attn_paired/attn/'
 
@@ -548,43 +594,13 @@ for n, file in enumerate(files):
     print(n, "th file", file, "running time", run_time - start_time)
 
 
-##### PASO 8 #####
-
-import csv
-import os
-import time
-from bert_embedding import BertEmbedding
-from configparser import ConfigParser
-from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
-from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
-from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
-
-
-"""
-terminal command:
-cd stanford-corenlp-full-2018-02-27/
-java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -preload tokenize,ssplit,pos -status_port 9000 -port 9000 -timeout 15000 &
-"""
-
-
-def load_local_corenlp_pos_tagger():
-    """
-    terminal command:
-    cd stanford-corenlp-full-2018-02-27/
-    java -mx4g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -preload tokenize,ssplit,pos -status_port 9000 -port 9000 -timeout 15000 &
-    """
-    config_parser = ConfigParser()
-    config_parser.read('config.ini')
-    host = config_parser.get('STANFORDCORENLPTAGGER', 'host')
-    port = config_parser.get('STANFORDCORENLPTAGGER', 'port')
-    return PosTaggingCoreNLP(host, port)
-
+#### STEP 8 ####
 
 start_time = time.time()
 
 dataset = 'SemEval2017'
-text_path = '../AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '../AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+text_path = './' + dataset + '/processed_docsutf8/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 
 # set save path for embeddings
 save_path = output_path + 'candidate_embedding/'
@@ -668,14 +684,7 @@ print("hostias", df_dict)
 for k, v in sorted(df_dict.items(), key=lambda item:item[1], reverse=True):
     w1.writerow([k, v])
 
-##### PASO 9 #####
-
-import csv
-import os
-import time
-import mxnet as mx
-from bert_embedding import BertEmbedding
-
+#### STEP 9 ####
 
 """
 get document word embedding by sentences
@@ -690,8 +699,8 @@ start_time = time.time()
 problem_files = []
 
 dataset = 'SemEval2017'
-text_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+text_path = './' + dataset + '/processed_docsutf8/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 
 
 files = os.listdir(text_path)
@@ -724,20 +733,7 @@ for n, file in enumerate(files):
 
     print(n + 1, "th file", file, "running time", time.time() - start_time) #'''
 
-##### PASO 10 #####
-
-import csv
-import os
-import time
-import numpy as np
-import torch
-from torch import nn
-import sys
-from string import punctuation
-import nltk
-from nltk.corpus import stopwords
-from tqdm import tqdm
-
+#### STEP 10 ####
 
 nltk.download('stopwords')
 
@@ -757,45 +753,12 @@ while True:
         maxInt = int(maxInt/10)
 
 
-def cosine_similarity(x, y, norm=False):
-    assert len(x) == len(y), "len(x) != len(y)"
-    res = np.array([[x[i] * y[i], x[i] * x[i], y[i] * y[i]] for i in range(len(x))])
-    cos = sum(res[:, 0]) / (np.sqrt(sum(res[:, 1])) * np.sqrt(sum(res[:, 2])))
-    return 0.5 * cos + 0.5 if norm else cos  # [0, 1]
-
-
-def self_attn_matrix(embedding_set):
-    ls = np.shape(embedding_set)[0]
-    Q = torch.tensor(embedding_set)
-    K = torch.tensor(embedding_set)
-    V = torch.tensor(embedding_set)
-    attn = torch.matmul(Q, K.transpose(-1,-2))
-    attn = nn.Softmax(dim=1)(attn)
-    V = torch.matmul(attn, V)
-    V = torch.sum(V, dim=0)
-    V = V/ls
-    return V
-
-
-def cross_attn_matrix(D,Q):
-    D = torch.tensor(D)
-    Q = torch.tensor(Q)
-    attn = torch.matmul(D, Q.transpose(-1,-2))
-    S_d2q = nn.Softmax(dim=1)(attn)  # S_d2q : softmax the row; shape[len(doc), len(query)]
-    S_q2d = nn.Softmax(dim=0)(attn)  # S_q2d : softmax the col; shape[len(doc), len(query)]
-    A_d2q = torch.matmul(S_d2q, Q)
-    A_q2d = torch.matmul(S_d2q, torch.matmul(S_q2d.transpose(-1,-2), D))
-    V = (D+A_d2q+torch.mul(D, A_d2q)+torch.mul(D, A_q2d))
-    V = V/4
-    return V
-
-
 start_time = time.time()
 
 dataset = 'SemEval2017'
 
-text_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_' + dataset+ '/'
+text_path = './' + dataset + '/processed_docsutf8/'
+output_path = './' + dataset + '/processed_' + dataset+ '/'
 save_path = output_path + 'candidate_cross_attn_value/'
 if not os.path.exists(save_path):
     os.makedirs(save_path)
@@ -886,58 +849,19 @@ for n, file in enumerate(files):
     print(n + 1, "th file", "running time", crt_time - start_time)
 
 
-##### PASO 11 #####
-
-import csv
-import os
-import time
-import numpy as np
-
-
-def f1(a, b):
-    return a*b*2/(a+b)
-
-
-def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
-    list_f1 = []
-    list_p = []
-    list_r = []
-    for r in range(len(actual)):
-        y_actual = actual[r]
-        y_predicted = predicted[r][:best]
-        y_score = 0
-        for p, prediction in enumerate(y_predicted):
-            if prediction in y_actual and prediction not in y_predicted[:p]:
-                y_score += 1
-        if not y_predicted:
-            y_p = 0
-            y_r = 0
-        else:
-            y_p = y_score / len(y_predicted)
-            y_r = y_score / len(y_actual)
-        if y_p != 0 and y_r != 0:
-            y_f1 = 2 * (y_p * y_r / (y_p + y_r))
-        else:
-            y_f1 = 0
-        list_f1.append(y_f1)
-        list_p.append(y_p)
-        list_r.append(y_r)
-    if pr_plot:
-        return list_f1, list_p, list_r
-    else:
-        return np.mean(list_f1), np.mean(list_p), np.mean(list_r)
+#### STEP 11 ####
 
 # load stopwords list
 stopwords = []
-my_file = '/content/drive/MyDrive/AttentionRank-main/UGIR_stopwords.txt'
+my_file = './UGIR_stopwords.txt'
 with open(my_file, "r") as f:
     for line in f:
         if line:
             stopwords.append(line.replace('\n', ''))
 
 dataset = 'SemEval2017'
-text_path = "/content/drive/MyDrive/AttentionRank-main/" + dataset + '/processed_docsutf8/'
-output_path = "/content/drive/MyDrive/AttentionRank-main/" + dataset + '/processed_' + dataset + '/'
+text_path = "./" + dataset + '/processed_docsutf8/'
+output_path = "./" + dataset + '/processed_' + dataset + '/'
 accumulated_self_attn_path = output_path + 'candidate_attn_paired/'
 
 # get files name
@@ -952,7 +876,6 @@ with open(df_path + dataset + "_candidate_df.csv", newline='') as csvfile:
     spamreader = csv.reader(csvfile, delimiter=',')
     for row in spamreader:
         k = row[0].lower()
-        print("holaaaa", k)
         v = float(row[1])
         df_dict[k] = v
 print(df_dict)
@@ -975,7 +898,6 @@ for n, file in enumerate(files):
         spamreader = csv.reader(csvfile, delimiter=',')
         for row in spamreader:
             k = row[0].lower()
-            print("holaaa", k)
             if k.find('.') == -1:
                 print(df_dict)
                 df = df_dict[k]
@@ -1042,7 +964,7 @@ for n, file in enumerate(files):
             f1_k += 1
 
     # load keys
-    label_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/keys/'
+    label_path = './' + dataset + '/keys/'
     my_key = label_path + file + '.key'
     print('\n Truth keys:')
     actual_single = []
