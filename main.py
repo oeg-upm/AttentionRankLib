@@ -253,7 +253,7 @@ for map in attentions:
 array_map = numpy.array(array_map)
 array_map = array_map[:,0, :, :, :]
 
-with open('./AttentionRank-main/SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
+with open('./SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
     text = file.read().replace('\n', '')
 delimiter = "."
 text= [x+delimiter for x in text.split(delimiter) if x]
@@ -276,7 +276,7 @@ feature_dicts_with_attn = [dictionary]
 
 dataset = 'SemEval2017'
 # text_path = '/content/drive/MyDrive/AttentionRank-main/' + dataset + '/processed_docsutf8/'
-output_path = './AttentionRank-main/' + dataset + '/processed_' + dataset + '/'
+output_path = './' + dataset + '/processed_' + dataset + '/'
 save_path = output_path + 'sentence_paired_text/'
 
 if not os.path.exists(save_path):
