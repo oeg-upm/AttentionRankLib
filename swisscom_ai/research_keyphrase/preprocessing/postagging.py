@@ -31,7 +31,7 @@ class PosTagging(ABC):
         Or a separator [ENDSENT] if we are requesting a string by putting as_tuple_list = False
 
         Example :
-        >>from sentkp.preprocessing import postagger as pt
+        >>from sentkp.preprocessing.py import postagger as pt
 
         >>pt = postagger.PosTagger()
 
