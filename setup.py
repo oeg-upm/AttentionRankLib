@@ -23,7 +23,7 @@ setup(
     # ),
     # package_dir={"": "src"},
     packages=['attentionrank'],
-    package_dir={'attentionrank': 'src/attentionrank'},
+    package_dir={'': 'src'},
     # install_requires=[],
     setup_requires=[],
     # install_requires=install_requires,

@@ -14,7 +14,22 @@ from string import punctuation
 import nltk
 from nltk.corpus import stopwords
 from tqdm import tqdm
+import sys
 
+
+#import sys
+#sys.path.append(os.path.abspath("/content/drive/MyDrive/AttentionRank-main"))
+from bert import tokenization
+from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
+from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
+from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
+
+import spacy
+import csv
+
+#### STEP 10 ####
+from nltk.corpus import stopwords
+nltk.download('stopwords')
 
 class ModelEmbedding():
 
@@ -252,18 +267,7 @@ def step_5(root_folder,dataset_name):
         print(n + 1, "th file", ide, "running time", run_time - start_time)
 
 
-#step_5(root_folder)
 
-
-#import sys
-#sys.path.append(os.path.abspath("/content/drive/MyDrive/AttentionRank-main"))
-from bert import tokenization
-from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
-from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
-from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
-
-import spacy
-import csv
 
 def step6(tokenizer,max_sequence_length,num_docs):
   start_time = time.time()
@@ -358,8 +362,6 @@ def step6(tokenizer,max_sequence_length,num_docs):
 
 #### STEP 7 ####
 """pair candidates and their accumulated self-attention"""
-
-
 def step7():
     dataset = 'SemEval2017'
     doc_path = './' + dataset + '/' + 'docsutf8/'
@@ -682,9 +684,7 @@ def step9(bertemb):
 #step9(bertemb)
 
 
-#### STEP 10 ####
-from nltk.corpus import stopwords
-nltk.download('stopwords')
+
 #### STEP 10 ####
 def cosine_similarity(x, y, norm=False):
     assert len(x) == len(y), "len(x) != len(y)"
@@ -749,6 +749,7 @@ def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
         return list_f1, list_p, list_r
     else:
         return np.mean(list_f1), np.mean(list_p), np.mean(list_r)
+
 
 def step10():
   punctuations = []
@@ -1045,6 +1046,6 @@ def step11():
     mean_f1, mean_p, mean_r = mean_f_p_r(actual, predicted, f1_top)
     straight_f1 = f1(mean_p, mean_r)
     print(mean_p, mean_r, straight_f1, mean_f1)
+    print('ssdddasdsdsd222')
 
 
-#step11()

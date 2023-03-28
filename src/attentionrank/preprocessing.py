@@ -103,13 +103,4 @@ def preprocessing_module(root_folder,dataset_name,tokenizer,model):
         preprocess_file(root_folder, fi,tokenizer,model,dataset_name)
 
 
-'''
-#tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-#model = TFBertModel.from_pretrained("bert-base-uncased")
-
-root_folder = './SemEval2017/'
-dataset_name = 'SemEval2017'
-preprocessing_module(root_folder)
-
-'''
 
