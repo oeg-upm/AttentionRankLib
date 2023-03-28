@@ -39,27 +39,6 @@ step11()
 
 
 
-'''
-#tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-#model = TFBertModel.from_pretrained("bert-base-uncased")
-
-
-dataset_name = 'SemEval2017'
-preprocessing_module(root_folder)
-
-#step_5(root_folder)def step_5(root_folder,dataset_name):
-#step6()
-#step7()
-#step8()
-#step9()
-#step10()
-#step11()
-
-
-
-'''
-
-
 
 
 

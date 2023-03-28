@@ -15,14 +15,15 @@ import nltk
 from nltk.corpus import stopwords
 from tqdm import tqdm
 import sys
-
+from .utils import convert_to_unicode
 
 #import sys
 #sys.path.append(os.path.abspath("/content/drive/MyDrive/AttentionRank-main"))
-from bert import tokenization
-from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
-from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
-from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
+#from bert import tokenization
+#from swisscom_ai.research_keyphrase.preprocessing.postagging import PosTaggingCoreNLP
+
+from .input_representation import InputTextObj#from swisscom_ai.research_keyphrase.model.input_representation import InputTextObj
+from .extractor import extract_candidates#from swisscom_ai.research_keyphrase.model.extractor import extract_candidates
 
 import spacy
 import csv
@@ -304,7 +305,7 @@ def step6(tokenizer,max_sequence_length,num_docs):
       raw_lines.append(line)
       print('---')
       print(line)
-      line = tokenization.convert_to_unicode(line).strip()
+      line = convert_to_unicode(line).strip() #tokenization.convert_to_unicode(line).strip()
       print(line)
       segments=[]
       if not line:  # line is empty, deal the 2 segments in the [current doc tokens]
@@ -907,7 +908,7 @@ def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
 def step11():
     # load stopwords list
     mystopwords = []
-    my_file = './UGIR_stopwords.txt'
+    my_file = './src/attentionrank/UGIR_stopwords.txt'
     with open(my_file, "r") as f:
         for line in f:
             if line:
@@ -1046,6 +1047,6 @@ def step11():
     mean_f1, mean_p, mean_r = mean_f_p_r(actual, predicted, f1_top)
     straight_f1 = f1(mean_p, mean_r)
     print(mean_p, mean_r, straight_f1, mean_f1)
-    print('ssdddasdsdsd222')
+    print('NO UGIR')
 
 
