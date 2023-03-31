@@ -3,7 +3,10 @@
 #### STEP 1-4 ####
 from transformers import BertTokenizer, TFBertModel
 import re
-import glob
+
+
+from attentionrank.processing
+
 import json
 import sys
 import bpe_utils

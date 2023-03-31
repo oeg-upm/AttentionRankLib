@@ -6,7 +6,6 @@ from src.attentionrank.preprocessing import preprocessing_module
 
 
 
-
 bertemb= ModelEmbedding('bert-base-uncased')
 #bertemb(["feature dollar",'Wolverstein'])
 
