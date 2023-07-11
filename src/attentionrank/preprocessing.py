@@ -10,21 +10,57 @@ from .utils import clean_folder
 import csv
 import glob
 
-
-
-
 #### STEP 1-4 ####
 
 
+def get_setences(text):
 
+    ## TODO
+    ##return text.split('.')
+    #if not line == "": FALTA ELIMINAR FRASES VACIAS
+    ## FALTA PREPROCESAR Y QUITAR NUMEROS Y elementos
+    delimiter = "."
+    sentences = [x + delimiter for x in text.split(delimiter) if x]
+    print(sentences)
+    return sentences
 
-
+def read_doc(filepath):
+      # './SemEval2017/docsutf8/S0010938X1500195X.txt'
+    with open(filepath, 'r') as file:
+        text = file.read().replace('\n', '')
+    return text
 
 def preprocess_file(root_folder, file_name,tokenizer,model,dataset_name):
+
+    # PROCESS 1
+    # Identifier
     file_identifier = file_name[:-4]
-    file_path = root_folder + 'docsutf8/' + file_name  # './SemEval2017/docsutf8/S0010938X1500195X.txt'
-    with open(file_path, 'r') as file:
-        text = file.read().replace('\n', '')
+
+    # read document
+    text= read_doc(root_folder + 'docsutf8/' + file_name)
+
+    sentences= get_setences(text)
+
+    # PROCESS 2
+
+
+    tokens = []
+    for line in sentences:
+
+        result = tokenizer(line)
+        input_ids = result['input_ids']
+        #tokens = tokens + tokenizer.convert_ids_to_tokens(input_ids)
+        tokens.append(tokenizer.convert_ids_to_tokens(input_ids))
+
+    print(tokens)
+
+
+
+    ## FOR EACH SENTENCE
+
+
+    '''
+
 
     encoded_input = tokenizer(text, return_tensors='tf')
     output = model(encoded_input, output_attentions=True)
@@ -35,18 +71,6 @@ def preprocess_file(root_folder, file_name,tokenizer,model,dataset_name):
         array_map.append(map)
     array_map = numpy.array(array_map)
     array_map = array_map[:, 0, :, :, :]
-
-    # with open('./SemEval2017/docsutf8/S0010938X1500195X.txt', 'r') as file:
-    #  text = file.read().replace('\n', '')
-
-    delimiter = "."
-    text = [x + delimiter for x in text.split(delimiter) if x]
-    tokens = []
-    for line in text:
-        if not line == "":
-            result = tokenizer(line)
-            input_ids = result['input_ids']
-            tokens = tokens + tokenizer.convert_ids_to_tokens(input_ids)
 
     # Data to be written
     dictionary = {
@@ -61,6 +85,9 @@ def preprocess_file(root_folder, file_name,tokenizer,model,dataset_name):
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+
+
 
     pickle.dump(feature_dicts_with_attn, open(save_path + file_identifier + '_orgbert_attn.pkl', 'wb'))
 
@@ -78,7 +105,7 @@ def preprocess_file(root_folder, file_name,tokenizer,model,dataset_name):
     with open(save_path + file_identifier + "_orgbert_attn.json", "w") as outfile:
         outfile.write(json_object)
 
-
+    '''
 
 
 
@@ -87,13 +114,16 @@ def preprocessing_module(root_folder,dataset_name,tokenizer,model):
     """
     reading_path = root_folder + 'docsutf8/'
     processing_path = root_folder + 'processed_' + dataset_name + '/'
+
+
     if not os.path.exists(reading_path):
         print('Error, there is no reading process path')
 
     if os.path.exists(processing_path):
         clean_folder(processing_path + 'sentence_paired_text/')
-        os.rmdir(processing_path + 'sentence_paired_text/')
-        clean_folder(processing_path)
+        clean_folder(processing_path + 'processed_docsutf8/')
+        #os.rmdir(processing_path + 'sentence_paired_text/')
+        #clean_folder(processing_path)
     else:
         os.makedirs(processing_path)
 
