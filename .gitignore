@@ -27,6 +27,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+SemEval2018/
+SemEval2017/
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -137,3 +140,8 @@ SemEval2017/processed_SemEval2017/sentence_paired_text2/S0010938X1500195X_orgber
 SemEval2017/processed_SemEval2017/sentence_paired_text/S0010938X1500195X_sentence_paired.txt
 SemEval2017/processed_SemEval2017/sentence_paired_text/S0010938X1500195X_orgbert_attn.pkl
 SemEval2017/processed_SemEval2017/sentence_paired_text/S0010938X1500195X_orgbert_attn.json
+
+SemEval2017_GPT3
+SemEval2017_GTranslate
+SemEval2010_GPT3
+SemEval2010_GTranslate

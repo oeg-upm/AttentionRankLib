@@ -6,7 +6,6 @@
 """Contain method that return list of candidate"""
 
 import re
-
 import nltk
 
 GRAMMAR_EN = """  NP:
@@ -53,7 +52,10 @@ def extract_candidates(text_obj, no_subset=False, repeat=False):
         keyphrase_candidate = set()
 
     np_parser = nltk.RegexpParser(get_grammar(text_obj.lang))  # Noun phrase parser
+    print(text_obj.pos_tagged)
     trees = np_parser.parse_sents(text_obj.pos_tagged)  # Generator with one tree per sentence
+    print(trees)
+    print("NO DEBERÍA ESTAR AQUÍ")
 
     for p, tree in enumerate(trees):
         # print(p, tree)

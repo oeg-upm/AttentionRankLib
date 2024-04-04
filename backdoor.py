@@ -12,7 +12,7 @@ type='roberta'
 lang='es'
 #dataset_name = 'SemEval2018'
 dataset_name = 'SemEval2010_GTranslate'
-#dataset_name = 'SemEval2010_GTP3'
+dataset_name = 'SemEval2010_GPT3'
 
 if type== 'bert':
     tokenizer = BertTokenizer.from_pretrained(modelname)
@@ -45,7 +45,6 @@ step7(dataset_name)
 ## step 8
 
 print('STEP 8')
-
 step8(bertemb,dataset_name,nounmodel,lang)
 ## step 9
 print('STEP 9')
