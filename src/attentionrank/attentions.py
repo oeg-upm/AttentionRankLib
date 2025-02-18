@@ -668,6 +668,9 @@ def step9(bertemb, dataset):
         save_path = output_path + 'doc_word_embedding_by_sentences/' + file + '/'
         if not os.path.exists(save_path):
             os.makedirs(save_path)
+        else:
+            print('already')
+            continue
 
         sentences_with_embeddings = bertemb(
             sentences)  # embeddign_generation('bert-base-uncased',sentences)#bert(sentences)  # this bert handle [list of sentences]
@@ -765,6 +768,7 @@ def mean_f_p_r(actual, predicted, best=10, pr_plot=False):
 
 
 def step10(dataset):
+    language='es'
     """
     Crossed attention step
     """
@@ -867,10 +871,14 @@ def step10(dataset):
             sentence_embedding_set = []
             for sentence_word_embeddings in all_sentences_word_embedding:  # ex. (19, n, 768)
                 # print(sentence_word_embeddings)
-                cross_attn = cross_attn_matrix(sentence_word_embeddings, querys_embedding_set[w])
-                sentence_embedding = self_attn_matrix(cross_attn)  # shape = (n, 768)
-                sentence_embedding_set.append(sentence_embedding)  # shape = (1, 768)
-
+                try:
+                    cross_attn = cross_attn_matrix(sentence_word_embeddings, querys_embedding_set[w])
+                    sentence_embedding = self_attn_matrix(cross_attn)  # shape = (n, 768)
+                    sentence_embedding_set.append(sentence_embedding)  # shape = (1, 768)
+                except:
+                    print('error')
+            if len(sentence_embedding_set)==0:
+                continue
             doc_inner_attn = torch.stack(sentence_embedding_set, dim=0)  # shape = (19, 768)
             doc_inner_attn = self_attn_matrix(doc_inner_attn)  # shape = (1, 768)
             output = cosine_similarity(query_inner_attn.cpu().numpy(), doc_inner_attn.cpu().numpy())

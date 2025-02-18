@@ -120,8 +120,9 @@ class ModelEmbedding():
                 data[0]= ' '+data[0].lower()
         result = self.extractor(data, return_tensors=True,truncation=True)
 
-
-        ids = self.tokenizer(data)
+        if data=='':
+            data='None'
+        ids = self.tokenizer(data,truncation=True)
         lis = []
         for res, input in zip(result, ids['input_ids']):
             lis.append((input, res[0].cpu().detach().numpy()))

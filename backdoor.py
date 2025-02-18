@@ -48,18 +48,19 @@ print('STEP 8')
 step8(bertemb,dataset_name,nounmodel,lang)
 ## step 9
 print('STEP 9')
-'''
+
 step9(bertemb,dataset_name)
 ## step 10
+'''
 print('STEP 10')
-step10(dataset_name)
+#step10(dataset_name)
 ## step 11
 
 
 
 print('EVALUATION')
 
-n= 5
+n= 15
 generate_results(dataset_name,lang,n)
 print(n)
 evaluate_results(dataset_name,n)

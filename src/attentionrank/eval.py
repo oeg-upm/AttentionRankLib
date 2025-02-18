@@ -111,7 +111,7 @@ def generate_results(datasetname, language, f1_top=10):
 
     for n, file in enumerate(files):
         #print('file', file, '\n')
-
+        pred_single = []
         # load cross attn dict
         cross_attn_dict_first = {}
         cross_attn_dict_path = output_path + 'candidate_cross_attn_value/'
@@ -119,95 +119,115 @@ def generate_results(datasetname, language, f1_top=10):
         # print(cross_attn_dict_path + file + tail)
         with open(cross_attn_dict_path + file + tail, newline='') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
+            v=0
+            k=''
+
             for row in spamreader:
                 k = row[0].lower()
                 if k.find('.') == -1:
+                    try:
                     # print(df_dict)
-                    df = df_dict[k]
-                    if df_dict[k]:  # < 44:
-                        v = float(row[1])
-                        cross_attn_dict_first[k] = v
+                        df = df_dict[k]
+                        if df_dict[k]:  # < 44:
+                            v = float(row[1])
+                            cross_attn_dict_first[k] = v
+                    except:
 
+                        print('next',k)
+            ## toberemoved
+            if len(cross_attn_dict_first.items()) == 0:
+
+                cross_attn_dict_first[k] = v
+
+        #print(df_dict)
         # print(cross_attn_dict_first)
-        cross_attn_dict = {}
-        for k, v in cross_attn_dict_first.items():
-            if k[-1] == "s" and k[:-1] in cross_attn_dict:
-                cross_attn_dict[k[:-1]] = max(v, cross_attn_dict[k[:-1]])
-            elif k + 's' in cross_attn_dict:
-                cross_attn_dict[k] = max(v, cross_attn_dict[k + 's'])
-                cross_attn_dict.pop(k + 's')
-            else:
-                cross_attn_dict[k] = v
 
-        # norm cross attn dict
-        # print('-------')
-        # print(cross_attn_dict)
-        a0 = min(cross_attn_dict.values())
-        b0 = max(cross_attn_dict.values())
-        for k, v in cross_attn_dict.items():
-            cross_attn_dict[k] = (v - a0) / (b0 - a0)
+        try:
 
-        # load accumulated self attn ranking
-        accumulated_self_attn_dict_first = {}
-        tail0 = "_attn_paired.csv"
+            cross_attn_dict = {}
+            for k, v in cross_attn_dict_first.items():
+                if k[-1] == "s" and k[:-1] in cross_attn_dict:
+                    cross_attn_dict[k[:-1]] = max(v, cross_attn_dict[k[:-1]])
+                elif k + 's' in cross_attn_dict:
+                    cross_attn_dict[k] = max(v, cross_attn_dict[k + 's'])
+                    cross_attn_dict.pop(k + 's')
+                else:
+                    cross_attn_dict[k] = v
 
-        with open(accumulated_self_attn_path + file + tail0, newline='') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=',')
-            for row in spamreader:
-                k = row[0].lower()
-                if k.find('.') == -1:
-                    v = float(row[1])  # /len(k.split(' '))
-                    accumulated_self_attn_dict_first[k] = v
+            # norm cross attn dict
+            # print('-------')
+            # print(cross_attn_dict)
+            a0 = min(cross_attn_dict.values())
+            b0 = max(cross_attn_dict.values())
+            for k, v in cross_attn_dict.items():
+                cross_attn_dict[k] = (v - a0) / (b0 - a0)
 
-        accumulated_self_attn_dict = {}
-        #print(accumulated_self_attn_dict_first)
-        for k, v in accumulated_self_attn_dict_first.items():
-            if k[-1] == "s" and k[:-1] in accumulated_self_attn_dict:
-                accumulated_self_attn_dict[k[:-1]] = v + accumulated_self_attn_dict[k[:-1]]
-            elif k + 's' in accumulated_self_attn_dict:
-                accumulated_self_attn_dict[k] = v + accumulated_self_attn_dict[k + 's']
-                accumulated_self_attn_dict.pop(k + 's')
-            else:
-                accumulated_self_attn_dict[k] = v
-        # print('--->')
-        # print(accumulated_self_attn_dict)
+            # load accumulated self attn ranking
+            accumulated_self_attn_dict_first = {}
+            tail0 = "_attn_paired.csv"
 
-        # norm attn-candidate dict
-        t = 8
-        ranking_dict = {}
-        #print(accumulated_self_attn_dict)
-        a1 = min(accumulated_self_attn_dict.values())
-        b1 = max(accumulated_self_attn_dict.values())
-        for k, v in accumulated_self_attn_dict.items():
-            # print('term', k)
-            if k in cross_attn_dict.keys() and k.split(' ')[0] not in mystopwords:
-                # print('passterm', k)
-                accumulated_self_attn_dict[k] = (v - a1) / (b1 - a1)
-                ranking_dict[k] = accumulated_self_attn_dict[k] * (t) / 10 + cross_attn_dict[k] * (10 - t) / 10
-            #else:
-             #   print('Not passed ' + k, k.split(' ')[0] not in mystopwords)
+            with open(accumulated_self_attn_path + file + tail0, newline='') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=',')
+                for row in spamreader:
+                    k = row[0].lower()
+                    if k.find('.') == -1:
+                        v = float(row[1])  # /len(k.split(' '))
+                        accumulated_self_attn_dict_first[k] = v
 
-        f1_k = 0
-        # print('Prediction:')
-        pred_single = []
-        for k, v in sorted(ranking_dict.items(), key=lambda item: item[1], reverse=True):
-            if f1_k < f1_top:
-                # print(k, v)
-                pred_single.append(k)
-                f1_k += 1
+            accumulated_self_attn_dict = {}
+            #print(accumulated_self_attn_dict_first)
+            for k, v in accumulated_self_attn_dict_first.items():
+                if k[-1] == "s" and k[:-1] in accumulated_self_attn_dict:
+                    accumulated_self_attn_dict[k[:-1]] = v + accumulated_self_attn_dict[k[:-1]]
+                elif k + 's' in accumulated_self_attn_dict:
+                    accumulated_self_attn_dict[k] = v + accumulated_self_attn_dict[k + 's']
+                    accumulated_self_attn_dict.pop(k + 's')
+                else:
+                    accumulated_self_attn_dict[k] = v
+            # print('--->')
+            # print(accumulated_self_attn_dict)
+
+            # norm attn-candidate dict
+            t = 8
+            ranking_dict = {}
+            #print(accumulated_self_attn_dict)
+            a1 = min(accumulated_self_attn_dict.values())
+            b1 = max(accumulated_self_attn_dict.values())
+            for k, v in accumulated_self_attn_dict.items():
+                # print('term', k)
+                if k in cross_attn_dict.keys() and k.split(' ')[0] not in mystopwords:
+                    # print('passterm', k)
+                    accumulated_self_attn_dict[k] = (v - a1) / (b1 - a1)
+                    ranking_dict[k] = accumulated_self_attn_dict[k] * (t) / 10 + cross_attn_dict[k] * (10 - t) / 10
+                #else:
+                 #   print('Not passed ' + k, k.split(' ')[0] not in mystopwords)
+
+            f1_k = 0
+            # print('Prediction:')
+
+            for k, v in sorted(ranking_dict.items(), key=lambda item: item[1], reverse=True):
+                if f1_k < f1_top:
+                    # print(k, v)
+                    pred_single.append(k)
+                    f1_k += 1
+        except:
+            print('Error fatale')
 
         # load keys
 
         label_path = './' + dataset + '/keys/'
         my_key = label_path + file + '.key'
         # print('\n Truth keys:')
-        actual_single = read_term_list_file(my_key)
-        actual_single = list(set(actual_single))
+        #actual_single = read_term_list_file(my_key)
+        #actual_single = list(set(actual_single))
 
+
+        '''
         actual.append(actual_single)
-        #print(actual_single)
         predicted.append(pred_single)
-        #print(pred_single)
+        
+        '''
+
         # save predicted single
         savefile= file+'.key'
         write_list_file(save_path+savefile,pred_single)
@@ -215,12 +235,13 @@ def generate_results(datasetname, language, f1_top=10):
 
 
 
-
+    '''
     # print('Len actual', len(actual), len(predicted))
     mean_f1, mean_p, mean_r = mean_f_p_r(actual, predicted, f1_top)
     straight_f1 = f1(mean_p, mean_r)
     print('Precission, recall, f1, mean_f1')
     print(mean_p, mean_r, straight_f1, mean_f1)
+    '''
 
 
 def evaluate_results(datasetname, f1_top):
@@ -234,7 +255,7 @@ def evaluate_results(datasetname, f1_top):
     keyfiles = os.listdir(keys_path)
     resfiles = os.listdir(res_path)
     if len(keyfiles) != len(resfiles):
-        print('FATAL ERROR')
+        print('FATAL ERROR',keyfiles,resfiles)
         return
 
     print('Files to process:', len(keyfiles))

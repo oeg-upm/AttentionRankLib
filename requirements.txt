@@ -1,7 +1,6 @@
 numpy==1.25.2
 flax==0.8.1
 tensorflow==2.15
-torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cpu
 nltk==3.8.1
 spacy==3.7.2
 tqdm==4.65.2

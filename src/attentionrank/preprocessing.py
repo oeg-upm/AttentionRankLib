@@ -6,6 +6,7 @@ import json
 import os
 import nltk
 from nltk.tokenize import sent_tokenize
+import shutil
 
 #### STEP 1-4 ####.  #### PABLO VERSION
 
@@ -153,9 +154,11 @@ def preprocessing_module(datasetname, bertemb, type,lan):
         print('Error, there is no reading process path')
 
     if os.path.exists(processing_path):
-        clean_folder(processing_path + 'sentence_paired_text/')
+        #clean_folder(processing_path + 'sentence_paired_text/')
         # os.rmdir(processing_path+'sentence_paired_text/')
-        # clean_folder(processing_path)
+        #clean_folder(processing_path)
+        # Borra la carpeta y todo su contenido
+        shutil.rmtree(processing_path)
     else:
         os.makedirs(processing_path)
 
