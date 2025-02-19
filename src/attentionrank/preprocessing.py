@@ -28,10 +28,6 @@ def process_sentence(sentence):
 
     attentions,encoded_input = ModelEmb.getAttentions(sentence)
 
-
-
-    #print(encoded_input)
-
     array_map = []
     for mapa in attentions:
         if model_type== 'bert':
@@ -141,6 +137,7 @@ def preprocessing_module(datasetname, bertemb, type,lan):
     model_type= type
     global lang
     lang=lan
+
 
     rootfolder = './' + datasetname + '/'
     global root_folder

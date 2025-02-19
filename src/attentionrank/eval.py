@@ -64,29 +64,33 @@ def generate_results(datasetname, language, f1_top=10):
     """
     # f1_top = 10
 
+    #datasetpath = './' + datasetname + '/'
 
-
-    datasetpath = './' + datasetname + '/'
+    datasetpath = os.path.join(".", datasetname)
+    # my_key = os.path.join(label_path, file + ".key")
 
     if language =='es':
         ## poner el español
-        stopwords_file = './src/attentionrank/UGIR_stopwords_es.txt'
+        #stopwords_file = './src/attentionrank/UGIR_stopwords_es.txt'
+        stopwords_file = os.path.join(".","src", "attentionrank","UGIR_stopwords_es.txt")
         mystopwords = read_term_list_file(stopwords_file)
     else:
 
-        stopwords_file = './src/attentionrank/UGIR_stopwords.txt'
+        stopwords_file = os.path.join(".","src", "attentionrank","UGIR_stopwords.txt") #stopwords_file = './src/attentionrank/.txt'
         mystopwords = read_term_list_file(stopwords_file)
 
     dataset = datasetname
-    text_path = datasetpath + '/docsutf8/'
-    output_path = datasetpath + '/processed_' + dataset + '/'
+    text_path = os.path.join(datasetpath,"docsutf8") # datasetpath + '/docsutf8/'
+    output_path = os.path.join(datasetpath,'processed_' + dataset)  #datasetpath + '/processed_' + dataset + '/'
 
-    accumulated_self_attn_path = output_path + 'candidate_attn_paired/'
+    accumulated_self_attn_path = os.path.join(output_path,'candidate_attn_paired')  # output_path + 'candidate_attn_paired/'
 
     save_path = './' + dataset + '/res' + str(f1_top) + '/'
+    save_path = os.path.join(".", dataset, 'res' + str(f1_top))
+
 
     if os.path.exists(save_path):
-        clean_folder(save_path + 'sentence_paired_text/')
+        clean_folder(save_path + 'sentence_paired_text')
 
     else:
         os.makedirs(save_path)
@@ -215,8 +219,12 @@ def generate_results(datasetname, language, f1_top=10):
 
         # load keys
 
-        label_path = './' + dataset + '/keys/'
-        my_key = label_path + file + '.key'
+
+
+        #label_path = os.path.join(".", dataset, "keys")
+        #my_key = os.path.join(label_path, file + ".key")
+
+
         # print('\n Truth keys:')
         #actual_single = read_term_list_file(my_key)
         #actual_single = list(set(actual_single))
@@ -245,7 +253,8 @@ def generate_results(datasetname, language, f1_top=10):
 
 
 def evaluate_results(datasetname, f1_top):
-    datasetpath = './' + datasetname + '/'
+    #datasetpath = './' + datasetname + '/'
+    datasetpath = os.path.join(".", datasetname)
 
     keys_path = datasetpath + 'keys/'
     res_path = datasetpath + 'res' + str(f1_top) + '/'

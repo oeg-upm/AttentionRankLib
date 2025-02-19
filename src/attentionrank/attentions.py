@@ -174,10 +174,13 @@ def step_5(dataset_name,lang,bertemb,nounmodel):
     start_time = time.time()
 
     # dataset = 'SemEval2017'
-    root_folder = './' + dataset_name + '/'
-    text_path = root_folder + '/docsutf8/'
+    #root_folder = './' + dataset_name + '/'
+    root_folder = os.path.join(".", dataset_name)
+
+
+    text_path = os.path.join(root_folder , 'docsutf8')#root_folder + '/docsutf8/'
     # print(text_path)
-    output_path = root_folder + '/processed_' + dataset_name + '/'
+    output_path = os.path.join(root_folder , 'processed_' + dataset_name) #root_folder + '/processed_' + dataset_name + '/'
 
     files = os.listdir(text_path)
     # for i, file in enumerate(files):
@@ -185,7 +188,7 @@ def step_5(dataset_name,lang,bertemb,nounmodel):
 
     # files = files[:]
 
-    save_path = output_path + "token_attn_paired/attn/"
+    save_path = os.path.join(output_path , "token_attn_paired" , "attn") #output_path + "token_attn_paired/attn/"
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     else:
@@ -238,6 +241,7 @@ def step6( dataset, max_sequence_length, num_docs):
         Candidate generation step
     """
     start_time = time.time()
+
     files = os.listdir("./" + dataset + "/docsutf8/")
     for f in files:
         step6_file( f, max_sequence_length, num_docs, dataset)
