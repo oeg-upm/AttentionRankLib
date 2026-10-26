@@ -21,3 +21,12 @@ identifiers:
   - type: "urn"
     value: "urn:nbn:de:0074-3846-7"
 date-released: "2024-09-24"
+preferred-citation:
+  type: conference-paper
+  title: "Benchmark for Automatic Keyword Extraction in Spanish: Datasets and Methods"
+  authors:
+  - name: "Pablo Calleja"
+  - name: "Patricia Martín-Chozas"
+  - name: "Elena Montiel-Ponsoda"
+  year: 2024
+  url: "https://ceur-ws.org/Vol-3846/paper12.pdf"
